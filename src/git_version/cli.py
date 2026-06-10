@@ -1,5 +1,4 @@
 import argparse
-import sys
 
 from .core import GitVersion
 
@@ -28,7 +27,7 @@ def main() -> None:
         choices=[
             "tag", "version", "version_major", "version_minor", "version_patch",
             "build", "branch", "short", "full", "extended", "commit",
-            "default_branch", "env", "all",
+            "default_branch", "release_branches", "env", "all",
         ],
         default="all",
         help="Which property to output (default: all)",

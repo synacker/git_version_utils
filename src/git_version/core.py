@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+import fnmatch
 from functools import cached_property
 
 
@@ -10,15 +11,19 @@ class GitVersion:
     Args:
         repo_path: Path to the Git repository (default: current working directory).
         tag_pattern: Glob pattern to match version tags (default: "v[0-9]*").
+        release_branches: List of branch patterns considered as release branches.
+            Defaults to [default_branch, "release/*"].
     """
 
     def __init__(
         self,
         repo_path: str | None = None,
         tag_pattern: str = "v[0-9]*",
+        release_branches: list[str] | None = None,
     ):
         self.repo_path = os.path.abspath(repo_path or os.getcwd())
         self.tag_pattern = tag_pattern
+        self._release_branches = release_branches
 
     def _git(self, *args: str) -> str:
         """Execute a git command safely and return stripped stdout."""
@@ -75,6 +80,16 @@ class GitVersion:
         return result or "master"
 
     @cached_property
+    def release_branches(self) -> list[str]:
+        """List of release branch patterns.
+
+        Defaults to [default_branch, "release/*"] if not explicitly set.
+        """
+        if self._release_branches is not None:
+            return self._release_branches
+        return [self.default_branch, "release/*"]
+
+    @cached_property
     def build(self) -> str:
         """Number of commits since the last version tag."""
         tag = self.tag
@@ -94,15 +109,30 @@ class GitVersion:
 
     @cached_property
     def full(self) -> str:
-        """Full version string with commit hash: '<version>-<short>'."""
-        return f"{self.version}-{self.short}"
+        """Full version string.
+
+        If the current branch matches a release branch pattern, returns just the
+        version (e.g. '1.0.0.1'). Otherwise returns the extended version with
+        commit hash (e.g. '1.0.0.1-a1b2c3').
+        """
+        if self._is_release_branch():
+            return self.version
+        return self.extended
 
     @cached_property
     def extended(self) -> str:
-        """Extended version: same as 'version' if build==0, else 'full'."""
-        if self.build == "0":
-            return self.version
+        """Extended version: '<version>-<short>' (e.g. '1.0.0.1-a1b2c3')."""
         return f"{self.version}-{self.short}"
+
+    def _is_release_branch(self) -> bool:
+        """Check if the current branch matches any release branch pattern."""
+        current = self.branch
+        if not current:
+            return False
+        for pattern in self.release_branches:
+            if fnmatch.fnmatch(current, pattern):
+                return True
+        return False
 
     @cached_property
     def commit(self) -> str:
@@ -132,6 +162,7 @@ class GitVersion:
             f"{prefix}_COMMIT": self.commit,
             f"{prefix}_BRANCH": self.branch,
             f"{prefix}_DEFAULT_BRANCH": self.default_branch,
+            f"{prefix}_RELEASE_BRANCHES": " ".join(self.release_branches),
         }
 
     def __str__(self) -> str:
@@ -143,4 +174,5 @@ class GitVersion:
         Build: {self.build}
         Extended: {self.extended}
         Commit: {self.commit}
+        Release branches: {", ".join(self.release_branches)}
         """

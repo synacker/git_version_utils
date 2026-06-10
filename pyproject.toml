@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "git-version-utils"
-version = "0.1.0"
+version = "0.0.0"
 description = "Extract version information from a Git repository and output as environment variables"
 readme = "README.md"
 authors = [

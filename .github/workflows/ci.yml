@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "release/*"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.git_version.outputs.BUILD_VERSION }}
+      version_major: ${{ steps.git_version.outputs.BUILD_VERSION_MAJOR }}
+      version_minor: ${{ steps.git_version.outputs.BUILD_VERSION_MINOR }}
+      version_patch: ${{ steps.git_version.outputs.BUILD_VERSION_PATCH }}
+      version_build: ${{ steps.git_version.outputs.BUILD_VERSION_BUILD }}
+      tag: ${{ steps.git_version.outputs.BUILD_VERSION_TAG }}
+      branch: ${{ steps.git_version.outputs.BUILD_VERSION_BRANCH }}
+      commit: ${{ steps.git_version.outputs.BUILD_VERSION_COMMIT }}
+      short: ${{ steps.git_version.outputs.BUILD_VERSION_SHORT }}
+      full: ${{ steps.git_version.outputs.BUILD_VERSION_FULL }}
+      extended: ${{ steps.git_version.outputs.BUILD_VERSION_EXTENDED }}
+      default_branch: ${{ steps.git_version.outputs.BUILD_VERSION_DEFAULT_BRANCH }}
+      release_branches: ${{ steps.git_version.outputs.BUILD_VERSION_RELEASE_BRANCHES }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Generate _version.py from git tags
+        run: python tools/write_version.py
+
+      - name: Build package
+        run: python -m build
+
+      - name: Install built package
+        run: pip install dist/*.whl
+
+      - name: Extract version info from built package
+        id: git_version
+        run: |
+          while IFS='=' read -r key value; do
+            echo "$key=$value" >> "$GITHUB_OUTPUT"
+          done < <(git-version --property env)
+
+      - name: Show version info
+        run: |
+          echo "═══════════════════════════════════════"
+          echo "        GIT VERSION INFORMATION"
+          echo "═══════════════════════════════════════"
+          echo "  Version:       ${{ steps.git_version.outputs.BUILD_VERSION }}"
+          echo "  Major:         ${{ steps.git_version.outputs.BUILD_VERSION_MAJOR }}"
+          echo "  Minor:         ${{ steps.git_version.outputs.BUILD_VERSION_MINOR }}"
+          echo "  Patch:         ${{ steps.git_version.outputs.BUILD_VERSION_PATCH }}"
+          echo "  Build:         ${{ steps.git_version.outputs.BUILD_VERSION_BUILD }}"
+          echo "  Tag:           ${{ steps.git_version.outputs.BUILD_VERSION_TAG }}"
+          echo "  Branch:        ${{ steps.git_version.outputs.BUILD_VERSION_BRANCH }}"
+          echo "  Commit:        ${{ steps.git_version.outputs.BUILD_VERSION_COMMIT }}"
+          echo "  Short:         ${{ steps.git_version.outputs.BUILD_VERSION_SHORT }}"
+          echo "  Full:          ${{ steps.git_version.outputs.BUILD_VERSION_FULL }}"
+          echo "  Extended:      ${{ steps.git_version.outputs.BUILD_VERSION_EXTENDED }}"
+          echo "  DefaultBranch: ${{ steps.git_version.outputs.BUILD_VERSION_DEFAULT_BRANCH }}"
+          echo "  ReleaseBranches: ${{ steps.git_version.outputs.BUILD_VERSION_RELEASE_BRANCHES }}"
+          echo "═══════════════════════════════════════"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Generate _version.py from git tags
+        run: python tools/write_version.py
+
+      - name: Build package
+        run: python -m build
+
+      - name: Install built package
+        run: pip install dist/*.whl
+
+      - name: Install test dependencies
+        run: pip install pytest
+
+      - name: Run tests from repo
+        run: python -m pytest tests/ -v
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Lint with ruff
+        run: ruff check src/ tests/

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "git-version-utils"
+version = "0.0.0"
+description = "Extract version information from a Git repository and output as environment variables"
+readme = "README.md"
+authors = [
+    { name = "Mikhail Milovidov", email = "synacker@yandex.ru" },
+]
+license = "MIT"
+keywords = ["git", "version", "build", "ci", "cd"]
+requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/synacker/git_version_utils"
+Repository = "https://github.com/synacker/git_version_utils"
+
+[project.scripts]
+git-version = "git_version.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

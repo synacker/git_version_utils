@@ -1,0 +1,9 @@
+try:
+    from ._version import __version__, __version_tuple__
+except ImportError:
+    __version__ = "0.0.0"
+    __version_tuple__ = (0, 0, 0)
+
+from .core import GitVersion
+
+__all__ = ["GitVersion", "__version__", "__version_tuple__"]

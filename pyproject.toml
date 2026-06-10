@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "git-version-utils"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Extract version information from a Git repository and output as environment variables"
 readme = "README.md"
 authors = [
@@ -23,3 +23,6 @@ git-version = "git_version.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "git_version._version.__version__" }

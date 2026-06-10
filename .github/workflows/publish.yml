@@ -2,16 +2,11 @@ name: Publish to PyPI
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to publish (e.g., 0.1.0)"
-        required: true
-        type: string
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4

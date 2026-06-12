@@ -1,4 +1,4 @@
-name: CI
+name: Build
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  package:
     runs-on: ubuntu-latest
 
     outputs:
@@ -83,7 +83,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    needs: build
+    needs: package
 
     strategy:
       matrix:
@@ -118,6 +118,35 @@ jobs:
 
       - name: Run tests from repo
         run: python -m pytest tests/ -v
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: package
+
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Download built package
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/synacker/git-version-utils:${{ needs.package.outputs.version }} \
+            --build-arg WHEEL=dist/*.whl .
+          docker tag ghcr.io/synacker/git-version-utils:${{ needs.package.outputs.version }} \
+            ghcr.io/synacker/git-version-utils:latest
+
+      - name: Show version info
+        run: |
+          docker run --rm \
+            -v "$(pwd):/workspace" -w /workspace \
+            ghcr.io/synacker/git-version-utils:latest \
+            git-version --safe-directory '*' --property env
 
   lint:
     runs-on: ubuntu-latest

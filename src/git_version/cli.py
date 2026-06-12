@@ -23,6 +23,12 @@ def main() -> None:
         help="Glob pattern to match version tags (default: v[0-9]*)",
     )
     parser.add_argument(
+        "--safe-directory",
+        default=None,
+        help="Pass ``-c safe.directory=<value>`` to git commands. "
+             "Use ``'*'`` to allow all directories (useful in Docker containers).",
+    )
+    parser.add_argument(
         "--property", "-P",
         choices=[
             "tag", "version", "version_major", "version_minor", "version_patch",
@@ -34,7 +40,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    gv = GitVersion(repo_path=args.repo, tag_pattern=args.tag_pattern)
+    gv = GitVersion(
+        repo_path=args.repo,
+        tag_pattern=args.tag_pattern,
+        safe_directory=args.safe_directory,
+    )
 
     if args.property == "env":
         for key, value in gv.env(prefix=args.prefix).items():

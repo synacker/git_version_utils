@@ -13,6 +13,8 @@ class GitVersion:
         tag_pattern: Glob pattern to match version tags (default: "v[0-9]*").
         release_branches: List of branch patterns considered as release branches.
             Defaults to [default_branch, "release/*"].
+        safe_directory: Pass ``-c safe.directory=<value>`` to every git command.
+            Use ``"*"`` to allow all directories (useful in Docker containers).
     """
 
     def __init__(
@@ -20,16 +22,22 @@ class GitVersion:
         repo_path: str | None = None,
         tag_pattern: str = "v[0-9]*",
         release_branches: list[str] | None = None,
+        safe_directory: str | None = None,
     ):
         self.repo_path = os.path.abspath(repo_path or os.getcwd())
         self.tag_pattern = tag_pattern
         self._release_branches = release_branches
+        self._safe_directory = safe_directory
 
     def _git(self, *args: str) -> str:
         """Execute a git command safely and return stripped stdout."""
         try:
+            cmd = ["git", "-C", self.repo_path]
+            if self._safe_directory is not None:
+                cmd.extend(["-c", f"safe.directory={self._safe_directory}"])
+            cmd.extend(args)
             result = subprocess.run(
-                ["git", "-C", self.repo_path, *args],
+                cmd,
                 capture_output=True,
                 text=True,
                 check=True,
